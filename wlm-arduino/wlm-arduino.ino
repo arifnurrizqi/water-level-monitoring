@@ -15,6 +15,8 @@ const int echoPin = 22;
 
 long duration;
 int distance;
+const int tinggi_maksimal = 300; // Tinggi maksimal dalam cm
+float persentase_distance;
 
 void setup() {
   Serial.begin(115200);
@@ -66,12 +68,19 @@ void loop() {
   // Menghitung jarak (ketinggian air) dalam cm
   distance = duration * 0.034 / 2;
 
+  // Menghitung persentase ketinggian
+  persentase_distance = ((float)distance / tinggi_maksimal) * 100;
+
   Serial.print("Ketinggian air: ");
   Serial.print(distance);
   Serial.println(" cm");
+  Serial.print("Persentase ketinggian: ");
+  Serial.print(persentase_distance);
+  Serial.println(" %");
 
   // Mengirim data ke ThingSpeak
   ThingSpeak.setField(1, distance);
+  ThingSpeak.setField(2, persentase_distance);
 
   int x = ThingSpeak.writeFields(myChannelNumber, writeAPIKey);
 
@@ -84,4 +93,3 @@ void loop() {
   // Delay untuk beberapa waktu sebelum membaca ulang (misalnya setiap 15 detik)
   delay(5000);
 }
-
