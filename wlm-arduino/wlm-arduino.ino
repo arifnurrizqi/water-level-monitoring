@@ -16,15 +16,22 @@ unsigned long myChannelNumber;
 const int trigPin = 23;
 const int echoPin = 22;
 
+// Buzzer pin
+const int buzzerPin = 19;
+
 long duration;
 int distance;
 const int tinggi_maksimal = 100; // Tinggi maksimal dalam cm
 float persentase_distance;
 
+unsigned long previousMillis = 0;
+const long interval = 15000; // Interval pengiriman data ke ThingSpeak dalam milidetik
+
 void setup() {
   Serial.begin(115200);
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
 
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
@@ -39,6 +46,8 @@ void setup() {
 }
 
 void loop() {
+  unsigned long currentMillis = millis();
+
   // Menyalakan pin trig untuk 10 mikrodetik untuk mengirimkan sinyal
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
@@ -62,18 +71,30 @@ void loop() {
   Serial.print(persentase_distance);
   Serial.println(" %");
 
-  // Mengirim data ke ThingSpeak
-  ThingSpeak.setField(1, distance);
-  ThingSpeak.setField(2, persentase_distance);
-
-  int x = ThingSpeak.writeFields(myChannelNumber, writeAPIKey);
-
-  if (x == 200) {
-    Serial.println("Data berhasil dikirim ke ThingSpeak");
+  // Jika persentase ketinggian air melebihi 60%, buzzer pasif akan berbunyi
+  if (persentase_distance > 60) {
+    int buzzerDelay = map(persentase_distance, 60, 100, 5000, 1000);
+    digitalWrite(buzzerPin, HIGH); // Menghidupkan buzzer
+    delay(buzzerDelay);
+    digitalWrite(buzzerPin, LOW); // Mematikan buzzer
+    delay(500); // Tambahan delay untuk interval bunyi
   } else {
-    Serial.println("Gagal mengirim data ke ThingSpeak, kode: " + String(x));
+    digitalWrite(buzzerPin, LOW); // Memastikan buzzer mati jika persentase di bawah 60%
   }
 
-  // Delay untuk beberapa waktu sebelum membaca ulang (misalnya setiap 15 detik)
-  delay(5000);
+  // Mengirim data ke ThingSpeak setiap interval yang ditentukan
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    ThingSpeak.setField(1, distance);
+    ThingSpeak.setField(2, persentase_distance);
+
+    int x = ThingSpeak.writeFields(myChannelNumber, writeAPIKey);
+
+    if (x == 200) {
+      Serial.println("Data berhasil dikirim ke ThingSpeak");
+    } else {
+      Serial.println("Gagal mengirim data ke ThingSpeak, kode: " + String(x));
+    }
+  }
 }
